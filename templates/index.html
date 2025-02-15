@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Fact Checker</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .sources {
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        .source-item {
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        textarea {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            resize: vertical;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Fact Checker</h1>
+        <div>
+            <textarea id="claim" rows="4" placeholder="Enter a claim to fact check..."></textarea>
+            <div>
+                <label for="num_sources">Number of sources:</label>
+                <input type="number" id="num_sources" value="3" min="1" max="10">
+            </div>
+            <button onclick="checkFact()">Check Fact</button>
+        </div>
+        <div class="loading" id="loading">
+            Analyzing claim... Please wait...
+        </div>
+        <div id="result"></div>
+        <div id="sources" class="sources"></div>
+    </div>
+
+    <script>
+        async function checkFact() {
+            const claim = document.getElementById('claim').value;
+            const numSources = document.getElementById('num_sources').value;
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const sources = document.getElementById('sources');
+
+            if (!claim) {
+                alert('Please enter a claim to check');
+                return;
+            }
+
+            loading.style.display = 'block';
+            result.innerHTML = '';
+            sources.innerHTML = '';
+
+            try {
+                const response = await fetch('/fact-check', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        claim: claim,
+                        num_sources: parseInt(numSources)
+                    })
+                });
+
+                const data = await response.json();
+                
+                // Display the main result using marked for markdown rendering
+                result.innerHTML = marked.parse(data.result);
+
+                // Display sources
+                sources.innerHTML = '<h3>Sources Used:</h3>';
+                data.sources.forEach(source => {
+                    sources.innerHTML += `
+                        <div class="source-item">
+                            <div><strong>Title:</strong> ${source.title}</div>
+                            <div><strong>URL:</strong> <a href="${source.url}" target="_blank">${source.url}</a></div>
+                            <div><strong>Relevance Score:</strong> ${source.relevance.score}/10</div>
+                            <div><strong>Relevance Explanation:</strong> ${source.relevance.explanation}</div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
