@@ -156,13 +156,14 @@ def generate_fact_check_response(user_input, sources):
     Sources:
     {sources_text}
 
-    Briefly expand on the claim and its assumptions.
+    Reiterate the claim and expand its assumptions, briefly.
     Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
     Format your response in markdown with clear sections:
     
-    1. Verdict (True/False/Partially True/Unverified)
-    2. Explanation
-    3. Key Evidence
+    1. One sentence reiteration of the claim (removing political or charged language)
+    2. Verdict (True/False/Partially True/Unverified)
+    3. Explanation
+    4. Key Evidence
     """
     
     response = query_ollama(prompt, stream=True)
