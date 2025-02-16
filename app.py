@@ -66,7 +66,7 @@ def search_searxng(query):
                 'language': 'en'
             }
         )
-        print(f"SearxNG response content: {response.text}")
+        print(f"SearxNG response content: {response.json}")
         
         if response.status_code != 200:
             raise Exception(f"SearxNG API returned status code {response.status_code}")
@@ -235,7 +235,7 @@ def fact_check():
 
             # Process results
             processed_sources = []
-            for i, result in enumerate(search_results):
+            for i, result in enumerate( ):
                 try:
                     yield generate_sse_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
