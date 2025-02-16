@@ -67,7 +67,7 @@ def search_searxng(query):
             params={
                 'q': query,
                 'format': 'json',
-                'engines': 'google,bing,duckduckgo',
+                'engines': 'google,bing',
                 'language': 'en'
             }
         )
