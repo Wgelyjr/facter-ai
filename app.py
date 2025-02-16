@@ -17,6 +17,7 @@ OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral')
 def query_ollama(prompt, model=OLLAMA_MODEL, stream=False):
     """Send a prompt to Ollama and get the response."""
     try:
+        print("\nPROMPT ##############\n" + prompt + "\n")
         response = requests.post(
             f"{OLLAMA_URL}/api/generate",
             json={
