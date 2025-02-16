@@ -186,9 +186,9 @@ def generate_fact_check_response(user_input, sources):
 def home():
     return render_template('index.html')
 
-def stream_response(data):
-    """Helper function to stream JSON data"""
-    return f"data: {json.dumps(data)}\n\n".encode('utf-8')
+def generate_sse_response(data):
+    """Helper function to generate SSE response"""
+    return b"data: " + json.dumps(data).encode('utf-8') + b"\n\n"
 
 @app.route('/fact-check', methods=['GET', 'POST'])
 def fact_check():
@@ -204,39 +204,39 @@ def fact_check():
 
         def generate():
             if not data or not data.get('claim'):
-                yield stream_response({'error': 'No claim provided'})
+                yield generate_sse_response({'error': 'No claim provided'})
                 return
                 
             user_input = data.get('claim', '')
             if not user_input:
-                yield stream_response({'error': 'No claim provided'})
+                yield generate_sse_response({'error': 'No claim provided'})
                 return
                 
             num_sources = data.get('num_sources', 3)
             if not isinstance(num_sources, int) or num_sources < 1:
-                yield stream_response({'error': 'Invalid number of sources'})
+                yield generate_sse_response({'error': 'Invalid number of sources'})
                 return
 
             # Update progress: Generating search query
-            yield stream_response({'status': 'Generating optimized search query...'})
+            yield generate_sse_response({'status': 'Generating optimized search query...'})
             search_query = generate_search_query(user_input)
             if search_query.startswith("Error:"):
-                yield stream_response({'error': search_query})
+                yield generate_sse_response({'error': search_query})
                 return
 
             # Update progress: Searching
-            yield stream_response({'status': 'Searching for relevant sources...'})
+            yield generate_sse_response({'status': 'Searching for relevant sources...'})
             try:
                 search_results = search_searxng(search_query)
             except Exception as e:
-                yield stream_response({'error': f'Search failed: {str(e)}'})
+                yield generate_sse_response({'error': f'Search failed: {str(e)}'})
                 return
 
             # Process results
             processed_sources = []
             for i, result in enumerate(search_results):
                 try:
-                    yield stream_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
+                    yield generate_sse_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
                     relevance = analyze_relevance(content, user_input)
                     
@@ -254,7 +254,7 @@ def fact_check():
                     break
 
             if not processed_sources:
-                yield stream_response({'error': 'No valid sources found'})
+                yield generate_sse_response({'error': 'No valid sources found'})
                 return
 
             # Sort by relevance
@@ -262,7 +262,7 @@ def fact_check():
             top_sources = processed_sources[:num_sources]
 
             # Generate final response
-            yield stream_response({'status': 'Generating fact-check analysis...'})
+            yield generate_sse_response({'status': 'Generating fact-check analysis...'})
             response = generate_fact_check_response(user_input, top_sources)
 
             # Send final result
@@ -272,9 +272,17 @@ def fact_check():
                            for s in top_sources],
                 'complete': True
             }
-            yield stream_response(result)
+            yield generate_sse_response(result)
 
-        return Response(generate(), mimetype='text/event-stream')
+        return Response(
+            generate(),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'X-Accel-Buffering': 'no'
+            }
+        )
     except Exception as e:
         print(f"Error in fact_check endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500
