@@ -1,4 +1,5 @@
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, Response
+import time
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -185,76 +186,88 @@ def generate_fact_check_response(user_input, sources):
 def home():
     return render_template('index.html')
 
+def stream_response(data):
+    """Helper function to stream JSON data"""
+    yield 'data: ' + json.dumps(data) + '\n\n'
+    time.sleep(0.1)  # Small delay to ensure frontend receives the message
+
 @app.route('/fact-check', methods=['POST'])
 def fact_check():
     try:
-        print("Received fact-check request")
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No JSON data received'}), 400
-            
-        print(f"Request data: {data}")
-        user_input = data.get('claim', '')
-        if not user_input:
-            return jsonify({'error': 'No claim provided'}), 400
-            
-        num_sources = data.get('num_sources', 3)
-        if not isinstance(num_sources, int) or num_sources < 1:
-            return jsonify({'error': 'Invalid number of sources'}), 400
-    
-        # Generate search query
-        print("Generating search query...")
-        search_query = generate_search_query(user_input)
-        if search_query.startswith("Error:"):
-            return jsonify({'error': search_query}), 500
-        print(f"Generated search query: {search_query}")
-        
-        # Get search results
-        print("Fetching search results...")
-        try:
-            search_results = search_searxng(search_query)
-            print(f"Found {len(search_results)} search results")
-        except Exception as e:
-            return jsonify({'error': f'Search failed: {str(e)}'}), 500
-    
-        # Process each result
-        processed_sources = []
-        print("Processing search results...")
-        for i, result in enumerate(search_results):
-            try:
-                print(f"Processing result {i+1}: {result['url']}")
-                content = extract_webpage_content(result['url'])
-                print(f"Analyzing relevance for result {i+1}")
-                relevance = analyze_relevance(content, user_input)
+        def generate():
+            data = request.get_json()
+            if not data:
+                yield stream_response({'error': 'No JSON data received'})
+                return
                 
-                processed_sources.append({
-                    'url': result['url'],
-                    'title': result['title'],
-                    'content': content,
-                    'relevance': relevance
-                })
+            user_input = data.get('claim', '')
+            if not user_input:
+                yield stream_response({'error': 'No claim provided'})
+                return
+                
+            num_sources = data.get('num_sources', 3)
+            if not isinstance(num_sources, int) or num_sources < 1:
+                yield stream_response({'error': 'Invalid number of sources'})
+                return
+
+            # Update progress: Generating search query
+            yield stream_response({'status': 'Generating optimized search query...'})
+            search_query = generate_search_query(user_input)
+            if search_query.startswith("Error:"):
+                yield stream_response({'error': search_query})
+                return
+
+            # Update progress: Searching
+            yield stream_response({'status': 'Searching for relevant sources...'})
+            try:
+                search_results = search_searxng(search_query)
             except Exception as e:
-                print(f"Error processing result {i+1}: {str(e)}")
-                continue
-    
-        if not processed_sources:
-            return jsonify({'error': 'No valid sources found'}), 500
-    
-        # Sort by relevance and take top N
-        processed_sources.sort(key=lambda x: x['relevance']['score'], reverse=True)
-        top_sources = processed_sources[:num_sources]
-        
-        print("Generating final response...")
-        # Generate final response
-        response = generate_fact_check_response(user_input, top_sources)
-        
-        result = {
-            'result': response,
-            'sources': [{'url': s['url'], 'title': s['title'], 'relevance': s['relevance']} 
-                       for s in top_sources]
-        }
-        print("Sending response back to client")
-        return jsonify(result)
+                yield stream_response({'error': f'Search failed: {str(e)}'})
+                return
+
+            # Process results
+            processed_sources = []
+            for i, result in enumerate(search_results):
+                try:
+                    yield stream_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
+                    content = extract_webpage_content(result['url'])
+                    relevance = analyze_relevance(content, user_input)
+                    
+                    processed_sources.append({
+                        'url': result['url'],
+                        'title': result['title'],
+                        'content': content,
+                        'relevance': relevance
+                    })
+                except Exception as e:
+                    print(f"Error processing result {i+1}: {str(e)}")
+                    continue
+
+                if len(processed_sources) >= num_sources:
+                    break
+
+            if not processed_sources:
+                yield stream_response({'error': 'No valid sources found'})
+                return
+
+            # Sort by relevance
+            processed_sources.sort(key=lambda x: x['relevance']['score'], reverse=True)
+            top_sources = processed_sources[:num_sources]
+
+            # Generate final response
+            yield stream_response({'status': 'Generating fact-check analysis...'})
+            response = generate_fact_check_response(user_input, top_sources)
+
+            # Send final result
+            result = {
+                'result': response,
+                'sources': [{'url': s['url'], 'title': s['title'], 'relevance': s['relevance']} 
+                           for s in top_sources],
+                'complete': True
+            }
+            yield stream_response(result)
+
+        return Response(generate(), mimetype='text/event-stream')
     except Exception as e:
         print(f"Error in fact_check endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500

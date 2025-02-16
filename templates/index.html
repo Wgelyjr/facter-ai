@@ -99,45 +99,58 @@
             sources.innerHTML = '';
 
             try {
-                const response = await fetch('/fact-check', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        claim: claim,
-                        num_sources: parseInt(numSources)
-                    })
-                });
+                // Set up event source for streaming
+                const eventSource = new EventSource('/fact-check?' + new URLSearchParams({
+                    claim: encodeURIComponent(claim),
+                    num_sources: numSources
+                }));
 
-                const data = await response.json();
-                
-                // Display the main result using marked for markdown rendering
-                if (data.result) {
-                    result.innerHTML = marked.parse(data.result);
-                } else if (data.error) {
-                    result.innerHTML = `<div class="error">Error: ${data.error}</div>`;
-                } else {
-                    result.innerHTML = '<div class="error">Error: No result received from server</div>';
-                }
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.error) {
+                        loading.style.display = 'none';
+                        result.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                        eventSource.close();
+                        return;
+                    }
 
-                // Display sources
-                // Display sources if available
-                if (data.sources && data.sources.length > 0) {
-                    sources.innerHTML = '<h3>Sources Used:</h3>';
-                    data.sources.forEach(source => {
-                    sources.innerHTML += `
-                        <div class="source-item">
-                            <div><strong>Title:</strong> ${source.title}</div>
-                            <div><strong>URL:</strong> <a href="${source.url}" target="_blank">${source.url}</a></div>
-                            <div><strong>Relevance Score:</strong> ${source.relevance.score}/10</div>
-                            <div><strong>Relevance Explanation:</strong> ${source.relevance.explanation}</div>
-                        </div>
-                    `;
-                    });
-                } else {
-                    sources.innerHTML = '<p>No sources available</p>';
-                }
+                    if (data.status) {
+                        loading.textContent = data.status;
+                        return;
+                    }
+
+                    if (data.result) {
+                        // Final result received
+                        result.innerHTML = marked.parse(data.result);
+                        
+                        // Display sources
+                        if (data.sources && data.sources.length > 0) {
+                            sources.innerHTML = '<h3>Sources Used:</h3>';
+                            data.sources.forEach(source => {
+                                sources.innerHTML += `
+                                    <div class="source-item">
+                                        <div><strong>Title:</strong> ${source.title}</div>
+                                        <div><strong>URL:</strong> <a href="${source.url}" target="_blank">${source.url}</a></div>
+                                        <div><strong>Relevance Score:</strong> ${source.relevance.score}/10</div>
+                                        <div><strong>Relevance Explanation:</strong> ${source.relevance.explanation}</div>
+                                    </div>
+                                `;
+                            });
+                        }
+
+                        if (data.complete) {
+                            loading.style.display = 'none';
+                            eventSource.close();
+                        }
+                    }
+                };
+
+                eventSource.onerror = function(error) {
+                    loading.style.display = 'none';
+                    result.innerHTML = '<div class="error">Error: Connection to server lost</div>';
+                    eventSource.close();
+                };
             } catch (error) {
                 result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             } finally {
