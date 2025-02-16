@@ -66,7 +66,7 @@ def search_searxng(query):
                 'language': 'en'
             }
         )
-        print(f"SearxNG response content: {response.json}")
+        print(f"SearxNG response content: {response.json()}")
         
         if response.status_code != 200:
             raise Exception(f"SearxNG API returned status code {response.status_code}")
