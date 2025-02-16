@@ -175,7 +175,6 @@ def generate_fact_check_response(user_input, sources):
     1. Verdict (True/False/Partially True/Unverified)
     2. Explanation
     3. Key Evidence
-    4. Sources Used
     """
     
     response = query_ollama(prompt)
