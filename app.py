@@ -279,13 +279,13 @@ def fact_check():
                     content = extract_webpage_content(result['url'])
                     yield generate_sse_response({'status': f'Analyzing relevance of source {i+1}...'})
                     relevance = analyze_relevance(content, user_input)
-                    
-                    processed_sources.append({
-                        'url': result['url'],
-                        'title': result['title'],
-                        'content': content,
-                        'relevance': relevance
-                    })
+                    if relevance > 0:
+                        processed_sources.append({
+                            'url': result['url'],
+                            'title': result['title'],
+                            'content': content,
+                            'relevance': relevance
+                        })
                 except Exception as e:
                     continue
 
