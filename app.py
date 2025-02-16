@@ -194,15 +194,16 @@ def stream_response(data):
 @app.route('/fact-check', methods=['GET', 'POST'])
 def fact_check():
     try:
+        # Capture request data before entering generator
+        if request.method == 'POST':
+            data = request.get_json()
+        else:
+            data = {
+                'claim': request.args.get('claim'),
+                'num_sources': request.args.get('num_sources', type=int, default=3)
+            }
+
         def generate():
-            # Handle both GET and POST requests
-            if request.method == 'POST':
-                data = request.get_json()
-            else:
-                data = {
-                    'claim': request.args.get('claim'),
-                    'num_sources': request.args.get('num_sources', type=int, default=3)
-                }
             if not data or not data.get('claim'):
                 yield stream_response({'error': 'No claim provided'})
                 return
