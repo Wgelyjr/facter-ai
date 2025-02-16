@@ -163,8 +163,9 @@ def generate_fact_check_response(user_input, sources):
     
     Sources:
     {sources_text}
-    
-    Provide a detailed analysis of the claim's veracity, citing specific information from the sources. Focus on the claim and its rebuttal.
+
+    Briefly expand on the claim and its assumptions.
+    Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
     Format your response in markdown with clear sections:
     
     1. Verdict (True/False/Partially True/Unverified)
