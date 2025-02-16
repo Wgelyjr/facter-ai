@@ -26,9 +26,7 @@ def query_ollama(prompt, model=OLLAMA_MODEL):
                 "stream": False
             }
         )
-        print(f"Ollama API response status: {response.status_code}")
-        print(f"Ollama API response content: {response.text[:500]}")  # First 500 chars
-        
+       
         if response.status_code != 200:
             error_msg = f"Ollama API returned status code {response.status_code}"
             print(error_msg)
@@ -71,8 +69,7 @@ def search_searxng(query):
                 'language': 'en'
             }
         )
-        print(f"SearxNG response status: {response.status_code}")
-        print(f"SearxNG response content: {response.text[:500]}")  # First 500 chars
+        print(f"SearxNG response content: {response.text}")
         
         if response.status_code != 200:
             raise Exception(f"SearxNG API returned status code {response.status_code}")
@@ -90,7 +87,6 @@ def extract_webpage_content(url):
     """Fetch and extract main content from a webpage."""
     try:
         response = requests.get(url, timeout=10, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'})
-        print(response.text)
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Remove script and style elements
@@ -99,7 +95,7 @@ def extract_webpage_content(url):
             
         # Get text content
         text = soup.get_text(separator=' ', strip=True)
-        
+        print(text)
         # Basic text cleaning
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         text = ' '.join(lines)
@@ -126,8 +122,7 @@ def analyze_relevance(content, user_input):
     """
     try:
         response = query_ollama(prompt)
-        print(f"Relevance analysis response: {response[:200]}")  # First 200 chars
-        
+
         # Check if response starts with "Error:"
         if response.startswith("Error:"):
             return {"score": 0, "explanation": response}
