@@ -188,7 +188,7 @@ def home():
 
 def stream_response(data):
     """Helper function to stream JSON data"""
-    yield ('data: ' + json.dumps(data) + '\n\n').encode('utf-8')
+    yield ('data: ' + json.dumps(data) + '\n\n').encode()
     time.sleep(0.1)  # Small delay to ensure frontend receives the message
 
 @app.route('/fact-check', methods=['GET', 'POST'])
