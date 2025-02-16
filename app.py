@@ -109,11 +109,13 @@ def analyze_relevance(content, user_input):
     
     Content: {content}
     
-    Rate relevance from 0-10 and explain why. Provide response in JSON format:
+    Rate relevance from 0-10 and explain why. Provide response in PROPER JSON format:
     {{
         "score": <0-10>,
         "explanation": "<explanation>"
     }}
+
+    Make sure all JSON is valid.
     """
     try:
         response = query_ollama(prompt)
