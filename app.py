@@ -149,7 +149,7 @@ def analyze_relevance(content, user_input):
         "score": <0-10>,
         "explanation": "<explanation>"
     }}
-
+    If any error is present in the text, the score should be ZERO.
     Make sure all JSON is valid.
     """
     try:
