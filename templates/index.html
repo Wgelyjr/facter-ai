@@ -113,11 +113,19 @@
                 const data = await response.json();
                 
                 // Display the main result using marked for markdown rendering
-                result.innerHTML = marked.parse(data.result);
+                if (data.result) {
+                    result.innerHTML = marked.parse(data.result);
+                } else if (data.error) {
+                    result.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                } else {
+                    result.innerHTML = '<div class="error">Error: No result received from server</div>';
+                }
 
                 // Display sources
-                sources.innerHTML = '<h3>Sources Used:</h3>';
-                data.sources.forEach(source => {
+                // Display sources if available
+                if (data.sources && data.sources.length > 0) {
+                    sources.innerHTML = '<h3>Sources Used:</h3>';
+                    data.sources.forEach(source => {
                     sources.innerHTML += `
                         <div class="source-item">
                             <div><strong>Title:</strong> ${source.title}</div>
@@ -126,7 +134,10 @@
                             <div><strong>Relevance Explanation:</strong> ${source.relevance.explanation}</div>
                         </div>
                     `;
-                });
+                    });
+                } else {
+                    sources.innerHTML = '<p>No sources available</p>';
+                }
             } catch (error) {
                 result.innerHTML = `<div class="error">Error: ${error.message}</div>`;
             } finally {
