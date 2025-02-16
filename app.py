@@ -273,7 +273,9 @@ def fact_check():
 
             # Process results
             processed_sources = []
+            source_count = 1
             for i, result in enumerate(search_results):
+                source_count += 1
                 try:
                     yield generate_sse_response({'status': f'Extracting and summarizing content from source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
@@ -289,7 +291,7 @@ def fact_check():
                 except Exception as e:
                     continue
 
-                if len(processed_sources) >= num_sources:
+                if source_count >= num_sources:
                     break
 
             if not processed_sources:
