@@ -158,10 +158,11 @@ def generate_fact_check_response(user_input, sources):
 
     Reiterate the claim and expand its assumptions, briefly.
     Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
+    If referring to sources, only do so with a formatted link.
     Format your response in markdown with clear sections:
     
-    1. One sentence reiteration of the claim (removing political or charged language)
-    2. Verdict (True/False/Partially True/Unverified)
+    1. Verdict (True/False/Partially True/Unverified)
+    2. One sentence reiteration of the claim (removing political or charged language)
     3. Explanation
     4. Key Evidence
     """
