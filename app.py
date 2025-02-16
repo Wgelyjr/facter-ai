@@ -160,7 +160,7 @@ def generate_fact_check_response(user_input, sources):
 
     Reiterate the claim and expand its assumptions, briefly.
     Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
-    If referring to sources, only do so with a formatted link.
+    If referring to sources, only do so to provided sources.
     Format your response in markdown with clear sections:
     
     1. Verdict (True/False/Partially True/Unverified)
