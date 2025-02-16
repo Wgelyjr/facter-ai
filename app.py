@@ -14,35 +14,32 @@ SEARXNG_URL = os.getenv('SEARXNG_URL', 'http://localhost:8080')
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral')
 
-def query_ollama(prompt, model=OLLAMA_MODEL):
+def query_ollama(prompt, model=OLLAMA_MODEL, stream=False):
     """Send a prompt to Ollama and get the response."""
     try:
-        print(f"Sending request to Ollama API at {OLLAMA_URL}")
         response = requests.post(
             f"{OLLAMA_URL}/api/generate",
             json={
                 "model": model,
                 "prompt": prompt,
-                "stream": False
-            }
+                "stream": stream
+            },
+            stream=stream
         )
        
         if response.status_code != 200:
-            error_msg = f"Ollama API returned status code {response.status_code}"
-            print(error_msg)
-            return f"Error: {error_msg}"
+            return f"Error: Ollama API returned status code {response.status_code}"
+            
+        if stream:
+            return response
             
         response_json = response.json()
         if not response_json.get('response'):
-            error_msg = "No response field in Ollama API response"
-            print(error_msg)
-            return f"Error: {error_msg}"
+            return "Error: No response field in Ollama API response"
             
         return response_json['response']
     except Exception as e:
-        error_msg = f"Error in query_ollama: {str(e)}"
-        print(error_msg)
-        return f"Error: {error_msg}"
+        return f"Error: {str(e)}"
 
 def generate_search_query(user_input):
     """Use AI to generate an effective search query from user input."""
@@ -80,7 +77,6 @@ def search_searxng(query):
             
         return response_json['results']
     except Exception as e:
-        print(f"Error in search_searxng: {str(e)}")
         raise
 
 def extract_webpage_content(url):
@@ -95,14 +91,13 @@ def extract_webpage_content(url):
             
         # Get text content
         text = soup.get_text(separator=' ', strip=True)
-        print(text)
+        
         # Basic text cleaning
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         text = ' '.join(lines)
         
         return text[:8000]  # Limit content length
     except Exception as e:
-        print(f"Error extracting content from {url}: {str(e)}")
         return f"Error extracting content: {str(e)}"
 
 def analyze_relevance(content, user_input):
@@ -138,12 +133,9 @@ def analyze_relevance(content, user_input):
             return {"score": 0, "explanation": "Invalid response format"}
             
         return {"score": score, "explanation": explanation}
-    except json.JSONDecodeError as e:
-        print(f"JSON parsing error in analyze_relevance: {str(e)}")
-        print(f"Raw response: {response}")
-        return {"score": 0, "explanation": f"Error parsing relevance analysis: {str(e)}"}
+    except json.JSONDecodeError:
+        return {"score": 0, "explanation": "Error parsing relevance analysis"}
     except Exception as e:
-        print(f"Error in analyze_relevance: {str(e)}")
         return {"score": 0, "explanation": f"Error in relevance analysis: {str(e)}"}
 
 def generate_fact_check_response(user_input, sources):
@@ -173,10 +165,19 @@ def generate_fact_check_response(user_input, sources):
     3. Key Evidence
     """
     
-    response = query_ollama(prompt)
-    if response.startswith("Error:"):
+    response = query_ollama(prompt, stream=True)
+    if isinstance(response, str) and response.startswith("Error:"):
         return "Unable to generate fact check response. " + response
-    return response
+        
+    full_response = ""
+    for line in response.iter_lines():
+        if line:
+            json_response = json.loads(line)
+            if 'response' in json_response:
+                full_response += json_response['response']
+                yield {'partial_response': full_response}
+    
+    return full_response
 
 @app.route('/')
 def home():
@@ -243,7 +244,6 @@ def fact_check():
                         'relevance': relevance
                     })
                 except Exception as e:
-                    print(f"Error processing result {i+1}: {str(e)}")
                     continue
 
                 if len(processed_sources) >= num_sources:
@@ -259,16 +259,21 @@ def fact_check():
 
             # Generate final response
             yield generate_sse_response({'status': 'Generating fact-check analysis...'})
-            response = generate_fact_check_response(user_input, top_sources)
+            
+            # Stream the fact check response
+            for partial_result in generate_fact_check_response(user_input, top_sources):
+                if 'partial_response' in partial_result:
+                    yield generate_sse_response({
+                        'result': partial_result['partial_response'],
+                        'sources': [{'url': s['url'], 'title': s['title'], 'relevance': s['relevance']} 
+                                  for s in top_sources],
+                        'streaming': True
+                    })
 
-            # Send final result
-            result = {
-                'result': response,
-                'sources': [{'url': s['url'], 'title': s['title'], 'relevance': s['relevance']} 
-                           for s in top_sources],
+            # Send completion signal
+            yield generate_sse_response({
                 'complete': True
-            }
-            yield generate_sse_response(result)
+            })
 
         return Response(
             generate(),
@@ -280,7 +285,6 @@ def fact_check():
             }
         )
     except Exception as e:
-        print(f"Error in fact_check endpoint: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':

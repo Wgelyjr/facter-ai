@@ -149,11 +149,11 @@
                             }
 
                             if (data.result) {
-                                // Final result received
+                                // Update result with streaming content
                                 result.innerHTML = marked.parse(data.result);
                                 
-                                // Display sources
-                                if (data.sources && data.sources.length > 0) {
+                                // Display sources if available
+                                if (data.sources && data.sources.length > 0 && !sources.innerHTML) {
                                     sources.innerHTML = '<h3>Sources Used:</h3>';
                                     data.sources.forEach(source => {
                                         sources.innerHTML += `
@@ -166,10 +166,10 @@
                                         `;
                                     });
                                 }
+                            }
 
-                                if (data.complete) {
-                                    loading.style.display = 'none';
-                                }
+                            if (data.complete) {
+                                loading.style.display = 'none';
                             }
                         }
                     }
