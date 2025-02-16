@@ -191,13 +191,20 @@ def stream_response(data):
     yield 'data: ' + json.dumps(data) + '\n\n'
     time.sleep(0.1)  # Small delay to ensure frontend receives the message
 
-@app.route('/fact-check', methods=['POST'])
+@app.route('/fact-check', methods=['GET', 'POST'])
 def fact_check():
     try:
         def generate():
-            data = request.get_json()
-            if not data:
-                yield stream_response({'error': 'No JSON data received'})
+            # Handle both GET and POST requests
+            if request.method == 'POST':
+                data = request.get_json()
+            else:
+                data = {
+                    'claim': request.args.get('claim'),
+                    'num_sources': request.args.get('num_sources', type=int, default=3)
+                }
+            if not data or not data.get('claim'):
+                yield stream_response({'error': 'No claim provided'})
                 return
                 
             user_input = data.get('claim', '')

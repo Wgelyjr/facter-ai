@@ -60,6 +60,17 @@
             display: none;
             text-align: center;
             margin: 20px 0;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            padding: 10px;
+            background-color: #f8d7da;
+            border-radius: 5px;
+            margin: 10px 0;
         }
     </style>
 </head>
@@ -99,11 +110,10 @@
             sources.innerHTML = '';
 
             try {
-                // Set up event source for streaming
-                const eventSource = new EventSource('/fact-check?' + new URLSearchParams({
-                    claim: encodeURIComponent(claim),
-                    num_sources: numSources
-                }));
+                const params = new URLSearchParams();
+                params.append('claim', claim);
+                params.append('num_sources', numSources);
+                const eventSource = new EventSource('/fact-check?' + params.toString());
 
                 eventSource.onmessage = function(event) {
                     const data = JSON.parse(event.data);
