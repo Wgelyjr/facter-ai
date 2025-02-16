@@ -106,9 +106,13 @@ def analyze_relevance(content, user_input):
     prompt = f"""
     Analyze how relevant the following content is to fact-checking this claim:
     
-    Claim to check: {user_input}
-    
-    Content: {content}
+    <claim>
+    {user_input}
+    </claim>
+
+    <content>
+    {content}
+    </content>
     
     Rate relevance from 0-10 and explain why. Provide response in PROPER JSON format:
     {{
