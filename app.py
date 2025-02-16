@@ -98,9 +98,38 @@ def extract_webpage_content(url):
         lines = [line.strip() for line in text.splitlines() if line.strip()]
         text = ' '.join(lines)
         
-        return text[:8000]  # Limit content length
+        # Get raw content first
+        raw_content = text[:12000]  # Increased limit for better context
+        
+        # Use Ollama to summarize the content
+        return summarize_content(raw_content)
     except Exception as e:
         return f"Error extracting content: {str(e)}"
+
+def summarize_content(raw_content):
+    """Use Ollama to generate a detailed summary of webpage content."""
+    prompt = f"""
+    Analyze and summarize the following webpage content, focusing on extracting factual information and key details. Remove any advertisements, navigation elements, or irrelevant content. Maintain important context and specific details that could be useful for fact-checking:
+
+    <content>
+    {raw_content}
+    </content>
+
+    Provide a detailed summary that:
+    1. Preserves specific facts, figures, and quotes
+    2. Maintains chronological order of events if present
+    3. Keeps source attributions and citations
+    4. Removes boilerplate website content
+    5. Eliminates redundant information
+    
+    Format the summary in clear paragraphs.
+    """
+    
+    summary = query_ollama(prompt)
+    if summary.startswith("Error:"):
+        return raw_content[:8000]  # Fallback to raw content if summarization fails
+        
+    return summary
 
 def analyze_relevance(content, user_input):
     """Use AI to analyze content relevance to the user's query."""
@@ -246,8 +275,9 @@ def fact_check():
             processed_sources = []
             for i, result in enumerate(search_results):
                 try:
-                    yield generate_sse_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
+                    yield generate_sse_response({'status': f'Extracting and summarizing content from source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
+                    yield generate_sse_response({'status': f'Analyzing relevance of source {i+1}...'})
                     relevance = analyze_relevance(content, user_input)
                     
                     processed_sources.append({
