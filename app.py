@@ -90,6 +90,7 @@ def extract_webpage_content(url):
     """Fetch and extract main content from a webpage."""
     try:
         response = requests.get(url, timeout=10, headers={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36'})
+        print(response.text)
         soup = BeautifulSoup(response.text, 'html.parser')
         
         # Remove script and style elements
