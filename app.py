@@ -46,6 +46,7 @@ def generate_search_query(user_input):
     prompt = f"""
     Convert the following fact-checking request into a clear, focused search query.
     Focus on the key elements that need verification.
+    Search query must be six words or fewer.
     
     Request: {user_input}
     
