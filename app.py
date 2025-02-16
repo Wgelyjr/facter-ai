@@ -113,7 +113,7 @@ def analyze_relevance(content, user_input):
     <content>
     {content}
     </content>
-    
+
     Rate relevance from 0-10 and explain why. Provide response in PROPER JSON format:
     {{
         "score": <0-10>,
@@ -158,14 +158,17 @@ def generate_fact_check_response(user_input, sources):
     prompt = f"""
     Fact check the following claim using the provided sources:
     
-    Claim: {user_input}
-    
-    Sources:
+    <claim>
+    {user_input}
+    </claim>
+
+    <sources>
     {sources_text}
+    </sources>
 
     Reiterate the claim and expand its assumptions, briefly.
     Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
-    If referring to sources, only do so to provided sources.
+    DO NOT refer to any information not present in the sources.
     Format your response in markdown with clear sections:
     
     1. Verdict (True/False/Partially True/Unverified)
