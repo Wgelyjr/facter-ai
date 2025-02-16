@@ -235,7 +235,7 @@ def fact_check():
 
             # Process results
             processed_sources = []
-            for i, result in enumerate( ):
+            for i, result in enumerate(search_results):
                 try:
                     yield generate_sse_response({'status': f'Analyzing source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
