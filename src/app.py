@@ -12,7 +12,7 @@ app = Flask(__name__)
 
 SEARXNG_URL = os.getenv('SEARXNG_URL', 'http://localhost:8080')
 OLLAMA_URL = os.getenv('OLLAMA_URL', 'http://localhost:11434')
-OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2:1b')
 
 def query_ollama(prompt, model=OLLAMA_MODEL, stream=False):
     """Send a prompt to Ollama and get the response."""
