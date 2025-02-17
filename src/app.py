@@ -17,7 +17,6 @@ OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'mistral')
 def query_ollama(prompt, model=OLLAMA_MODEL, stream=False):
     """Send a prompt to Ollama and get the response."""
     try:
-        print("\nPROMPT ##############\n" + prompt + "\n")
         response = requests.post(
             f"{OLLAMA_URL}/api/generate",
             json={
@@ -58,7 +57,6 @@ def generate_search_query(user_input):
 def search_searxng(query):
     """Search using SearxNG and return results."""
     try:
-        print(f"Sending request to SearxNG at {SEARXNG_URL}")
         response = requests.get(
             f"{SEARXNG_URL}/search",
             params={
@@ -68,7 +66,6 @@ def search_searxng(query):
                 'language': 'en'
             }
         )
-        print(f"SearxNG response content: {response.json()}")
         
         if response.status_code != 200:
             raise Exception(f"SearxNG API returned status code {response.status_code}")
@@ -186,15 +183,11 @@ def generate_fact_check_response(user_input, sources):
     ])
     
     prompt = f"""
-    Fact check the following claim using the provided sources:
+    Fact check the following claim using the provided sources at the end of this prompt:
     
     <claim>
     {user_input}
     </claim>
-
-    <sources>
-    {sources_text}
-    </sources>
 
     Reiterate the claim and expand its assumptions, briefly.
     Provide a detailed analysis of the claim's veracity, citing specific information from the sources.
@@ -205,6 +198,10 @@ def generate_fact_check_response(user_input, sources):
     2. One sentence reiteration of the claim (removing political or charged language)
     3. Explanation
     4. Key Evidence
+
+    <sources>
+    {sources_text}
+    </sources>
     """
     
     response = query_ollama(prompt, stream=True)
@@ -273,15 +270,18 @@ def fact_check():
 
             # Process results
             processed_sources = []
-            source_count = 1
+            master_count = 0
             for i, result in enumerate(search_results):
-                source_count += 1
+                master_count += 1
+                if len(processed_sources) >= num_sources or master_count >= 20: # TODO: replace magic num with a configurable (from UI?)
+                    break
+
                 try:
                     yield generate_sse_response({'status': f'Extracting and summarizing content from source {i+1} of {min(len(search_results), num_sources)}...'})
                     content = extract_webpage_content(result['url'])
                     yield generate_sse_response({'status': f'Analyzing relevance of source {i+1}...'})
                     relevance = analyze_relevance(content, user_input)
-                    if relevance > 0:
+                    if relevance["score"] > 0:
                         processed_sources.append({
                             'url': result['url'],
                             'title': result['title'],
@@ -289,10 +289,8 @@ def fact_check():
                             'relevance': relevance
                         })
                 except Exception as e:
+                    print(e)
                     continue
-
-                if source_count >= num_sources:
-                    break
 
             if not processed_sources:
                 yield generate_sse_response({'error': 'No valid sources found'})
