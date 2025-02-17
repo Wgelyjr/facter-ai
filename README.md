@@ -3,8 +3,8 @@
 ## Getting Started
 
 ### Prerequisites:
- - Ollama instance
- - SearXNG instance, with JSON and requests enabled
+ - [Ollama](https://github.com/ollama/ollama) instance
+ - [SearXNG](https://github.com/searxng/searxng) instance, with JSON and requests enabled
  - Docker (optional)
 
 ### Clone, Build, & Run:
